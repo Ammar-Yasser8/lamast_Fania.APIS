@@ -26,10 +26,8 @@ const uploadDiscount = async (req, res) => {
       });
     }
 
-    // Read the file and convert to Base64
-    const imagePath = req.file.path;
-    const fileBuffer = fs.readFileSync(imagePath);
-    const base64Image = fileBuffer.toString('base64');
+    // Use the file buffer directly from memory storage
+    const base64Image = req.file.buffer.toString('base64');
     const dataUri = `data:${req.file.mimetype};base64,${base64Image}`;
 
     const newDiscount = new Discount({
@@ -40,9 +38,6 @@ const uploadDiscount = async (req, res) => {
     });
 
     await newDiscount.save();
-
-    // Clean up
-    fs.unlinkSync(imagePath);
 
     res.status(201).json({
       success: true,
@@ -76,8 +71,43 @@ const deleteDiscount = async (req, res) => {
   }
 };
 
+// UPDATE A DISCOUNT
+const updateDiscount = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description } = req.body;
+    
+    let updateData = { name, description };
+
+    // If a new image is uploaded
+    if (req.file) {
+      const base64Image = req.file.buffer.toString('base64');
+      updateData.imageUrl = `data:${req.file.mimetype};base64,${base64Image}`;
+      updateData.imageType = req.file.mimetype;
+    }
+
+    const discount = await Discount.findByIdAndUpdate(id, updateData, { new: true });
+
+    if (!discount) {
+      return res.status(404).json({
+        success: false,
+        message: 'Discount not found.',
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Discount updated successfully!',
+      data: discount,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   getAllDiscounts,
   uploadDiscount,
+  updateDiscount,
   deleteDiscount,
 };

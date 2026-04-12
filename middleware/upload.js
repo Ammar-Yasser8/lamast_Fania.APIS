@@ -44,33 +44,17 @@ const imageFileFilter = (req, file, cb) => {
   }
 };
 
-// ── Create an upload middleware for a specific subfolder ─────
-// Usage: createUploader('products') or createUploader('discounts')
-const createUploader = (subfolder) => {
-  // Define storage settings
-  const storage = multer.diskStorage({
-    // WHERE to save the file
-    destination: (req, file, cb) => {
-      const uploadPath = path.join(__dirname, '..', 'uploads', subfolder);
-      ensureDirectoryExists(uploadPath);
-      cb(null, uploadPath);
-    },
+// ── Create an upload middleware using Memory Storage ──────────
+// Memory Storage is better for Vercel and serverless environments
+// because it doesn't require writing to the local disk.
+const createUploader = () => {
+  const storage = multer.memoryStorage();
 
-    // WHAT to name the file
-    // We add a timestamp prefix to avoid name collisions
-    filename: (req, file, cb) => {
-      const uniquePrefix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-      const extension = path.extname(file.originalname);
-      cb(null, uniquePrefix + extension);
-    },
-  });
-
-  // Return the configured multer instance
   return multer({
     storage,
     fileFilter: imageFileFilter,
     limits: {
-      fileSize: 5 * 1024 * 1024, // 5MB max file size
+      fileSize: 5 * 1024 * 1024, // 5MB max
     },
   });
 };
@@ -78,8 +62,8 @@ const createUploader = (subfolder) => {
 // ── Export pre-configured uploaders ─────────────────────────
 module.exports = {
   // For product images: expects a form field named "image"
-  uploadProductImage: createUploader('products').single('image'),
+  uploadProductImage: createUploader().single('image'),
 
   // For discount banners: expects a form field named "image"
-  uploadDiscountImage: createUploader('discounts').single('image'),
+  uploadDiscountImage: createUploader().single('image'),
 };

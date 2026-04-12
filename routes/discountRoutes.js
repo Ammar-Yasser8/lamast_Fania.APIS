@@ -12,6 +12,7 @@ const router = express.Router();
 const {
   getAllDiscounts,
   uploadDiscount,
+  updateDiscount,
   deleteDiscount,
 } = require('../controllers/discountController');
 
@@ -24,9 +25,10 @@ const { uploadDiscountImage } = require('../middleware/upload');
 router.get('/', getAllDiscounts);
 
 // POST /api/discounts       → Upload a new discount banner
-// The uploadDiscountImage middleware runs FIRST to handle the file,
-// then the uploadDiscount controller saves the data.
 router.post('/', uploadDiscountImage, uploadDiscount);
+
+// PUT /api/discounts/:id    → Update a discount
+router.put('/:id', uploadDiscountImage, updateDiscount);
 
 // DELETE /api/discounts/:id → Delete a discount banner by ID
 router.delete('/:id', deleteDiscount);

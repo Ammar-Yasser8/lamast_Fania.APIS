@@ -12,6 +12,7 @@ const router = express.Router();
 const {
   getAllProducts,
   uploadProduct,
+  updateProduct,
   deleteProduct,
 } = require('../controllers/productController');
 
@@ -24,9 +25,10 @@ const { uploadProductImage } = require('../middleware/upload');
 router.get('/', getAllProducts);
 
 // POST /api/products       → Upload a new product image
-// The uploadProductImage middleware runs FIRST to handle the file,
-// then the uploadProduct controller saves the data.
 router.post('/', uploadProductImage, uploadProduct);
+
+// PUT /api/products/:id    → Update a product
+router.put('/:id', uploadProductImage, updateProduct);
 
 // DELETE /api/products/:id → Delete a product image by ID
 router.delete('/:id', deleteProduct);

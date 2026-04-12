@@ -27,10 +27,8 @@ const uploadProduct = async (req, res) => {
       });
     }
 
-    // Read the file and convert to Base64
-    const imagePath = req.file.path;
-    const fileBuffer = fs.readFileSync(imagePath);
-    const base64Image = fileBuffer.toString('base64');
+    // Use the file buffer directly from memory storage
+    const base64Image = req.file.buffer.toString('base64');
     const dataUri = `data:${req.file.mimetype};base64,${base64Image}`;
 
     const newProduct = new Product({
@@ -42,9 +40,6 @@ const uploadProduct = async (req, res) => {
     });
 
     await newProduct.save();
-
-    // Clean up: Delete the local file after saving to DB
-    fs.unlinkSync(imagePath);
 
     res.status(201).json({
       success: true,
@@ -78,8 +73,43 @@ const deleteProduct = async (req, res) => {
   }
 };
 
+// UPDATE A PRODUCT
+const updateProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description, price } = req.body;
+    
+    let updateData = { name, description, price };
+
+    // If a new image is uploaded
+    if (req.file) {
+      const base64Image = req.file.buffer.toString('base64');
+      updateData.imageUrl = `data:${req.file.mimetype};base64,${base64Image}`;
+      updateData.imageType = req.file.mimetype;
+    }
+
+    const product = await Product.findByIdAndUpdate(id, updateData, { new: true });
+
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: 'Product not found.',
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Product updated successfully!',
+      data: product,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   getAllProducts,
   uploadProduct,
+  updateProduct,
   deleteProduct,
 };

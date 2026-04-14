@@ -28,38 +28,62 @@ const PORT = process.env.PORT || 5001;
 
 // ── Connect to MongoDB ──────────────────────────────────────
 const options = {
-  serverSelectionTimeoutMS: 60000,
-  connectTimeoutMS: 60000,
+  serverSelectionTimeoutMS: 30000, // Reduced for faster failure
+  connectTimeoutMS: 30000,
   tls: true,
+  // Standard Atlas connections usually don't need this, but keeping it if environment requires
   tlsAllowInvalidCertificates: true,
 };
 
-// Vercel Serverless MongoDB Connection Optimizer
-let cachedDb = null;
+// Global Mongoose configuration
+mongoose.set('bufferCommands', false); // Disable buffering globally to see real errors
+
+let cachedConnectionPromise = null;
 
 async function connectToDatabase() {
-  if (cachedDb) {
-    return cachedDb;
+  // If we already have a connection, return it
+  if (mongoose.connection.readyState === 1) {
+    return mongoose.connection;
   }
   
   if (!process.env.MONGO_URI) {
     console.error('❌ MONGO_URI is missing from environment variables!');
-    return null;
+    throw new Error('MONGO_URI is missing');
   }
 
-  const db = await mongoose.connect(process.env.MONGO_URI, options);
-  cachedDb = db;
-  console.log('🚀 Connected to MongoDB Atlas');
-  return db;
+  // If we are currently connecting, wait for that promise
+  if (!cachedConnectionPromise) {
+    console.log('⏳ Connecting to MongoDB...');
+    cachedConnectionPromise = mongoose.connect(process.env.MONGO_URI, options)
+      .then((m) => {
+        console.log('🚀 Connected to MongoDB Atlas');
+        return m;
+      })
+      .catch((err) => {
+        console.error('❌ MongoDB Connection Error:', err.message);
+        cachedConnectionPromise = null; // Reset on failure so we can retry
+        throw err;
+      });
+  }
+
+  return cachedConnectionPromise;
 }
 
-// Connect immediately, but also ensure it connects on incoming requests if dropped
-connectToDatabase().catch(err => console.error('❌ Initial MongoDB Connection Error:', err));
+// Connect immediately (non-blocking)
+connectToDatabase().catch(err => console.error('❌ Initial MongoDB Connection Error:', err.message));
 
 // Add a middleware to ensure the DB is connected before handling any requests
 app.use(async (req, res, next) => {
-  await connectToDatabase();
-  next();
+  try {
+    await connectToDatabase();
+    next();
+  } catch (error) {
+    res.status(503).json({ 
+      success: false, 
+      message: 'Database Connection Unavailable', 
+      detail: error.message 
+    });
+  }
 });
 
 // ============================================================

@@ -78,7 +78,7 @@ const updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
     const { name, description, price } = req.body;
-    
+
     let updateData = { name, description, price };
 
     // If a new image is uploaded

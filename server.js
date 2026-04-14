@@ -28,15 +28,39 @@ const PORT = process.env.PORT || 5001;
 
 // ── Connect to MongoDB ──────────────────────────────────────
 const options = {
-  serverSelectionTimeoutMS: 60000, // Wait 60 seconds
+  serverSelectionTimeoutMS: 60000,
   connectTimeoutMS: 60000,
   tls: true,
-  tlsAllowInvalidCertificates: true, // Sometimes helps with network proxies
+  tlsAllowInvalidCertificates: true,
 };
 
-mongoose.connect(process.env.MONGO_URI, options)
-  .then(() => console.log('🚀 Connected to MongoDB Atlas'))
-  .catch(err => console.error('❌ MongoDB Connection Error:', err));
+// Vercel Serverless MongoDB Connection Optimizer
+let cachedDb = null;
+
+async function connectToDatabase() {
+  if (cachedDb) {
+    return cachedDb;
+  }
+  
+  if (!process.env.MONGO_URI) {
+    console.error('❌ MONGO_URI is missing from environment variables!');
+    return null;
+  }
+
+  const db = await mongoose.connect(process.env.MONGO_URI, options);
+  cachedDb = db;
+  console.log('🚀 Connected to MongoDB Atlas');
+  return db;
+}
+
+// Connect immediately, but also ensure it connects on incoming requests if dropped
+connectToDatabase().catch(err => console.error('❌ Initial MongoDB Connection Error:', err));
+
+// Add a middleware to ensure the DB is connected before handling any requests
+app.use(async (req, res, next) => {
+  await connectToDatabase();
+  next();
+});
 
 // ============================================================
 //  MIDDLEWARE

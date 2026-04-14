@@ -92,12 +92,11 @@ app.use(async (req, res, next) => {
 
 // Enable CORS so the React frontend (running on a different port)
 // can communicate with this backend.
-app.cors = cors({
+app.use(cors({
   origin: '*', // Allow all origins (restrict in production)
-  methods: ['GET', 'POST', 'DELETE'],
-  allowedHeaders: ['Content-Type'],
-});
-app.use(cors());
+  methods: ['GET', 'POST', 'DELETE', 'PUT', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 
 // Parse incoming JSON request bodies
 app.use(express.json());
@@ -114,7 +113,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // ============================================================
 
 // Health-check route — useful to verify the server is running
-app.get('/', (req, res) => {
+app.get(['/', '/api'], (req, res) => {
   res.json({
     success: true,
     message: '🚀 Lamasat Fanyaa API is running!',
